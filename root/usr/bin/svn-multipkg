@@ -12,6 +12,7 @@ use File::Path;
 use File::Temp;
 use SVN::Client;
 use HTTP::Date;
+use Term::ReadKey;
 
 # metadata tracing
 my @actions;
@@ -41,6 +42,10 @@ sub usage() {
     -v, verbose        verbose
     -p, platform=s     platform
     -s, set=s          List of variables to set
+    -U, username=s     username for SVN server authentication (default
+                       is the username running this program)
+    -P, password=s     password for SVN server authentication (default
+                       is to prompt for the password)
 EOF
   exit(0);
 }
@@ -61,6 +66,8 @@ my %getoptions = (
   'v|verbose'    => 'verbose',
   'p|platform=s' => 'platform',
   's|set=s'      => 'List of variables to set',
+  'U|username=s' => 'username for SVN server authentication',
+  'P|password=s' => 'password for SVN server authentication'
 );
 
 usage() unless GetOptions( $opt, keys %getoptions );
@@ -70,7 +77,11 @@ my $package = shift || usage();
 my $url     = $opt->{b} . '/' . $package;
 my $verbose = $opt->{v};
 my $wantrev = $opt->{r};
-my $ctx     = SVN::Client::->new;
+my $username = $opt->{U} || getpwuid($<);
+my $ctx     = SVN::Client::->new(auth => [
+		SVN::Client::get_simple_provider(),
+		SVN::Client::get_simple_prompt_provider(\&simple_prompt, 2),
+		SVN::Client::get_username_provider()]);
 my $tmp     = File::Temp::tempdir( CLEANUP => ( !defined( $opt->{k} ) ) );
 my $srcdir  = "$tmp/src";
 my $build   = "$tmp/build";
@@ -78,6 +89,21 @@ my $rev;
 
 # options to pass through to multipkg
 my @multipkg_opts = map { ("-$_") } grep { $opt->{$_} } (qw/k v/);
+
+sub simple_prompt {
+    my ($cred, $realm, $default_username, $may_save, $pool) = @_;
+
+    $cred->username($username);
+    print "Password: ";
+    # flush stdout
+    BEGIN { $| = 1 }
+    Term::ReadKey::ReadMode(2);	# noecho
+    my $password = <>;
+    Term::ReadKey::ReadMode(0);	# restore
+    chomp($password);
+    $cred->password($password);
+    $cred->may_save($may_save);
+}
 
 info("get last change revision $url @ $wantrev");
 $ctx->info(
