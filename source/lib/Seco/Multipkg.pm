@@ -1338,6 +1338,17 @@ sub _init {
 
   $finaldata->{whoami} = _whoami();
 
+  if ( $self->{verbose} ) {
+    $self->infomsg( "Data:" );
+    foreach my $key ( keys %$finaldata ) {
+      $self->infomsg( "    $key: $finaldata->{$key}" );
+    }
+    $self->infomsg( "Scripts" );
+    foreach my $key ( keys %$scripts ) {
+      $self->infomsg( "    $key: $scripts->{$key}" );
+    }
+  }
+
   $self->data($finaldata);
   $self->scripts($scripts);
 
@@ -1433,22 +1444,10 @@ sub platforms {
     my $rel = <$f>;
     close $f;
 
-    if ( $rel =~ /Red Hat Enterprise Linux AS release (\S+)/ ) {
+    if ( $rel =~ /Red Hat Enterprise Linux .* release (\S+)/ ) {
       my @parts = split /\./, $1;
-      push @platforms, "rhel-$1";
       push @platforms, "rhel-$parts[0]";
-    }
-
-    if ( $rel =~ /Red Hat Enterprise Linux Server release (\S+)/ ) {
-      my @parts = split /\./, $1;
       push @platforms, "rhel-$1";
-      push @platforms, "rhel-$parts[0]";
-    }
-
-    if ( $rel =~ /Red Hat Enterprise Linux Workstation release (\S+)/ ) {
-      my @parts = split /\./, $1;
-      push @platforms, "rhel-$1";
-      push @platforms, "rhel-$parts[0]";
     }
 
     if ( $rel =~ /Red Hat Linux Advanced Server release (\S+)/ ) {
@@ -1465,6 +1464,7 @@ sub platforms {
 
   unshift @platforms, 'default';
   $self->{platforms} = \@platforms;
+  $self->infomsg( "Platforms: " . join(",", @platforms) );
   return @platforms;
 }
 
