@@ -1445,6 +1445,12 @@ sub platforms {
       push @platforms, "rhel-$parts[0]";
     }
 
+    if ( $rel =~ /Red Hat Enterprise Linux Workstation release (\S+)/ ) {
+      my @parts = split /\./, $1;
+      push @platforms, "rhel-$1";
+      push @platforms, "rhel-$parts[0]";
+    }
+
     if ( $rel =~ /Red Hat Linux Advanced Server release (\S+)/ ) {
       push @platforms, "rhas-$1";
     }
